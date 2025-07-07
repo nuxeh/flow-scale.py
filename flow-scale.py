@@ -27,7 +27,21 @@ def get_layer_height_from_env():
                 continue
     return None
 
-def process_gcode_line(line, flow_ratio, current_z, z_start, z_end, current_layer, layer_start, layer_end, use_layer_mode):
+def get_input_path_from_env():
+    candidates = [
+        'ORCASLICER_GCODE_OUTPUT_PATH',
+        'SUPERSLICER_GCODE_OUTPUT_PATH',
+        'SLIC3R_PP_OUTPUT_NAME',
+        'BAMBU_GCODE_PATH'
+    ]
+    for var in candidates:
+        val = os.environ.get(var)
+        if val and os.path.exists(val):
+            return val
+    return None
+
+def process_gcode_line(line, flow_ratio, current_z, z_start, z_end,
+                       current_layer, layer_start, layer_end, use_layer_mode):
     if use_layer_mode and current_layer is not None:
         if current_layer < layer_start or (layer_end is not None and current_layer > layer_end):
             return line
@@ -59,19 +73,22 @@ def main():
     parser.add_argument('--layer-height', type=float, help='Layer height in mm (optional if detectable)')
     parser.add_argument('--force', action='store_true', help='Force processing even if G92 E0 safety check fails')
     parser.add_argument('--inplace', action='store_true', help='Modify the input file in-place')
-    parser.add_argument('positional_infile', nargs='?', help='Input file path if --in not given')
-
+    parser.add_argument('positional_infile', nargs='?', help='Input file path (used only if --in and env vars not set)')
     args = parser.parse_args()
 
-    # Resolve input path
+    # Resolve input path priority
     if args.infile:
         infile = args.infile
-    elif args.positional_infile:
-        infile = args.positional_infile
     else:
-        infile = '-'
+        env_path = get_input_path_from_env()
+        if env_path:
+            infile = env_path
+        elif args.positional_infile:
+            infile = args.positional_infile
+        else:
+            infile = '-'
 
-    # Handle inplace logic
+    # Handle --inplace logic
     if args.inplace:
         if infile == '-':
             print("❌ ERROR: Cannot use --inplace with stdin input.", file=sys.stderr)
@@ -118,7 +135,7 @@ def main():
         print("Use --force to override this check if you know what you're doing.", file=sys.stderr)
         sys.exit(1)
 
-    output_stream = sys.stdout if args.outfile == '-' else open(args.outfile, 'w')
+    output_stream = sys.stdout if outfile == '-' else open(outfile, 'w')
     with output_stream as fout:
         for line in input_lines:
             z = extract_z(line)
