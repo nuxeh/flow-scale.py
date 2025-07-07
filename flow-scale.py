@@ -60,6 +60,15 @@ def process_gcode_line(line, flow_ratio, current_z, z_start, z_end,
         return new_line + rest
     return line
 
+def write_debug_log(params):
+    try:
+        with open('/tmp/scale_flow_debug.txt', 'w') as f:
+            f.write("=== scale_flow Debug Info ===\n")
+            for key, value in params.items():
+                f.write(f"{key}: {value}\n")
+    except Exception as e:
+        print(f"⚠️ Could not write debug log: {e}", file=sys.stderr)
+
 def main():
     parser = argparse.ArgumentParser(
         description="Scale G-code E values by flow ratio within Z or layer range."
@@ -73,6 +82,7 @@ def main():
     parser.add_argument('--layer-height', type=float, help='Layer height in mm (optional if detectable)')
     parser.add_argument('--force', action='store_true', help='Force processing even if G92 E0 safety check fails')
     parser.add_argument('--inplace', action='store_true', help='Modify the input file in-place')
+    parser.add_argument('--debug', action='store_true', help='Write debug info to /tmp/scale_flow_debug.txt')
     parser.add_argument('positional_infile', nargs='?', help='Input file path (used only if --in and env vars not set)')
     args = parser.parse_args()
 
@@ -135,6 +145,7 @@ def main():
         print("Use --force to override this check if you know what you're doing.", file=sys.stderr)
         sys.exit(1)
 
+    modified_lines = 0
     output_stream = sys.stdout if outfile == '-' else open(outfile, 'w')
     with output_stream as fout:
         for line in input_lines:
@@ -143,15 +154,37 @@ def main():
                 current_z = z
 
             current_layer = None
-            if use_layer_mode and current_z is not None and layer_height > 0:
+            if use_layer_mode and current_z is not None and layer_height:
                 current_layer = int(round(current_z / layer_height))
 
-            fout.write(process_gcode_line(
+            new_line = process_gcode_line(
                 line, args.flow_ratio,
                 current_z, args.z_start, args.z_end,
                 current_layer, layer_start, layer_end,
                 use_layer_mode
-            ))
+            )
+            if new_line != line:
+                modified_lines += 1
+            fout.write(new_line)
+
+    if args.debug:
+        debug_data = {
+            'Input file': infile,
+            'Output file': outfile,
+            'Flow ratio': args.flow_ratio,
+            'Inplace': args.inplace,
+            'Z-start': args.z_start,
+            'Z-end': args.z_end,
+            'Layer mode': use_layer_mode,
+            'Layer start': layer_start,
+            'Layer end': layer_end,
+            'Layer height': layer_height,
+            'Extrusion mode': extrusion_mode,
+            'G92 E0 resets': g92_e0_count,
+            'Lines modified': modified_lines,
+        }
+        write_debug_log(debug_data)
+        print("🪵 Debug info written to /tmp/scale_flow_debug.txt", file=sys.stderr)
 
 if __name__ == '__main__':
     main()
