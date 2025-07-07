@@ -47,17 +47,29 @@ def process_gcode_line(line, flow_ratio, current_z, z_start, z_end, current_laye
     return line
 
 def main():
-    parser = argparse.ArgumentParser(description="Scale G-code E values by flow ratio within Z or layer range.")
-    parser.add_argument('--in', dest='infile', default='-', help='Input G-code file (default: stdin)')
+    parser = argparse.ArgumentParser(
+        description="Scale G-code E values by flow ratio within Z or layer range."
+    )
+    parser.add_argument('--in', dest='infile', help='Input G-code file')
     parser.add_argument('--out', dest='outfile', default='-', help='Output G-code file (default: stdout)')
     parser.add_argument('--flow-ratio', type=float, required=True, help='Flow ratio to scale E values')
-
     parser.add_argument('--z-start', type=float, default=None, help='Start Z-height (inclusive)')
     parser.add_argument('--z-end', type=float, default=None, help='End Z-height (inclusive)')
     parser.add_argument('--layers', type=str, help='Layer range (e.g., 2:5 or 3)')
     parser.add_argument('--layer-height', type=float, help='Layer height in mm (optional if detectable)')
     parser.add_argument('--force', action='store_true', help='Force processing even if G92 E0 safety check fails')
+    parser.add_argument('positional_infile', nargs='?', help='Positional input file path (used if --in not given)')
+
     args = parser.parse_args()
+
+    # Fallback logic: --in takes precedence, otherwise use positional arg
+    #infile = ''
+    if args.infile:
+        infile = args.infile
+    elif args.positional_infile:
+        infile = args.positional_infile
+    else:
+        infile = '-'  # stdin
 
     use_layer_mode = args.layers is not None
     layer_start = layer_end = None
@@ -75,7 +87,7 @@ def main():
     g92_e0_count = 0
     input_lines = []
 
-    input_stream = sys.stdin if args.infile == '-' else open(args.infile, 'r')
+    input_stream = sys.stdin if infile == '-' else open(infile, 'r')
     with input_stream as fin:
         for line in fin:
             input_lines.append(line)
