@@ -58,18 +58,27 @@ def main():
     parser.add_argument('--layers', type=str, help='Layer range (e.g., 2:5 or 3)')
     parser.add_argument('--layer-height', type=float, help='Layer height in mm (optional if detectable)')
     parser.add_argument('--force', action='store_true', help='Force processing even if G92 E0 safety check fails')
-    parser.add_argument('positional_infile', nargs='?', help='Positional input file path (used if --in not given)')
+    parser.add_argument('--inplace', action='store_true', help='Modify the input file in-place')
+    parser.add_argument('positional_infile', nargs='?', help='Input file path if --in not given')
 
     args = parser.parse_args()
 
-    # Fallback logic: --in takes precedence, otherwise use positional arg
-    #infile = ''
+    # Resolve input path
     if args.infile:
         infile = args.infile
     elif args.positional_infile:
         infile = args.positional_infile
     else:
-        infile = '-'  # stdin
+        infile = '-'
+
+    # Handle inplace logic
+    if args.inplace:
+        if infile == '-':
+            print("❌ ERROR: Cannot use --inplace with stdin input.", file=sys.stderr)
+            sys.exit(1)
+        outfile = infile
+    else:
+        outfile = args.outfile
 
     use_layer_mode = args.layers is not None
     layer_start = layer_end = None
