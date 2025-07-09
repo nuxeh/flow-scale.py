@@ -60,33 +60,40 @@ def process_gcode_line(line, flow_ratio, current_z, z_start, z_end,
         return new_line + rest
     return line
 
-def write_debug_log(params):
-    try:
-        with open('/tmp/scale_flow_debug.txt', 'w') as f:
-            f.write("=== scale_flow Debug Info ===\n")
-            for key, value in params.items():
-                f.write(f"{key}: {value}\n")
-    except Exception as e:
-        print(f"⚠️ Could not write debug log: {e}", file=sys.stderr)
+def write_debug_output(params, to_stderr=False, to_file_path=None):
+    lines = ["=== flow_scale Debug Info ==="]
+    for key, value in params.items():
+        lines.append(f"{key}: {value}")
+    output = "\n".join(lines) + "\n"
+
+    if to_stderr:
+        print(output, file=sys.stderr)
+    if to_file_path:
+        try:
+            with open(to_file_path, 'w') as f:
+                f.write(output)
+        except Exception as e:
+            print(f"⚠️ Could not write debug file: {e}", file=sys.stderr)
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Scale G-code E values by flow ratio within Z or layer range."
+        description="flow_scale: Scale G-code E values by flow ratio within Z or layer range."
     )
-    parser.add_argument('--in', dest='infile', help='Input G-code file')
-    parser.add_argument('--out', dest='outfile', default='-', help='Output G-code file (default: stdout)')
-    parser.add_argument('--flow-ratio', type=float, required=True, help='Flow ratio to scale E values')
-    parser.add_argument('--z-start', type=float, default=None, help='Start Z-height (inclusive)')
-    parser.add_argument('--z-end', type=float, default=None, help='End Z-height (inclusive)')
-    parser.add_argument('--layers', type=str, help='Layer range (e.g., 2:5 or 3)')
-    parser.add_argument('--layer-height', type=float, help='Layer height in mm (optional if detectable)')
-    parser.add_argument('--force', action='store_true', help='Force processing even if G92 E0 safety check fails')
-    parser.add_argument('--inplace', action='store_true', help='Modify the input file in-place')
-    parser.add_argument('--debug', action='store_true', help='Write debug info to /tmp/scale_flow_debug.txt')
+    parser.add_argument('-i', '--in', dest='infile', help='Input G-code file')
+    parser.add_argument('-o', '--out', dest='outfile', default='-', help='Output G-code file (default: stdout)')
+    parser.add_argument('-r', '--flow-ratio', type=float, required=True, help='Flow ratio to scale E values')
+    parser.add_argument('-z', '--z-start', type=float, default=None, help='Start Z-height (inclusive)')
+    parser.add_argument('-Z', '--z-end', type=float, default=None, help='End Z-height (inclusive)')
+    parser.add_argument('-l', '--layers', type=str, help='Layer range (e.g., 2:5 or 3)')
+    parser.add_argument('-L', '--layer-height', type=float, help='Layer height in mm (optional if detectable)')
+    parser.add_argument('-f', '--force', action='store_true', help='Force processing even if G92 E0 safety check fails')
+    parser.add_argument('-p', '--inplace', action='store_true', help='Modify the input file in-place')
+    parser.add_argument('-d', '--debug', action='store_true', help='Print debug info to stderr')
+    parser.add_argument('-D', '--debug-file', nargs='?', const='/tmp/flow_scale_debug.txt',
+                        help='Write debug info to file (default: /tmp/flow_scale_debug.txt)')
     parser.add_argument('positional_infile', nargs='?', help='Input file path (used only if --in and env vars not set)')
     args = parser.parse_args()
 
-    # Resolve input path priority
     if args.infile:
         infile = args.infile
     else:
@@ -98,7 +105,6 @@ def main():
         else:
             infile = '-'
 
-    # Handle --inplace logic
     if args.inplace:
         if infile == '-':
             print("❌ ERROR: Cannot use --inplace with stdin input.", file=sys.stderr)
@@ -167,7 +173,7 @@ def main():
                 modified_lines += 1
             fout.write(new_line)
 
-    if args.debug:
+    if args.debug or args.debug_file:
         total_lines = len(input_lines)
         percent_modified = (modified_lines / total_lines) * 100 if total_lines > 0 else 0.0
         debug_data = {
@@ -187,8 +193,7 @@ def main():
             'Lines modified': modified_lines,
             'Modified %': f"{percent_modified:.2f}%",
         }
-        write_debug_log(debug_data)
-        print("🪵 Debug info written to /tmp/scale_flow_debug.txt", file=sys.stderr)
+        write_debug_output(debug_data, to_stderr=args.debug, to_file_path=args.debug_file)
 
 if __name__ == '__main__':
     main()
