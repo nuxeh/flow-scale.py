@@ -168,6 +168,8 @@ def main():
             fout.write(new_line)
 
     if args.debug:
+        total_lines = len(input_lines)
+        percent_modified = (modified_lines / total_lines) * 100 if total_lines > 0 else 0.0
         debug_data = {
             'Input file': infile,
             'Output file': outfile,
@@ -181,7 +183,9 @@ def main():
             'Layer height': layer_height,
             'Extrusion mode': extrusion_mode,
             'G92 E0 resets': g92_e0_count,
+            'Total lines': total_lines,
             'Lines modified': modified_lines,
+            'Modified %': f"{percent_modified:.2f}%",
         }
         write_debug_log(debug_data)
         print("🪵 Debug info written to /tmp/scale_flow_debug.txt", file=sys.stderr)
