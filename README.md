@@ -2,7 +2,7 @@
 
 A post-processing script for scaling extrusion flow in G-code (E values) based on configurable Z-height or layer ranges. It works with absolute or relative extrusion, and can be integrated into slicers like OrcaSlicer, SuperSlicer, Bambu Studio, and others.
 
-## FEATURES
+## Features
 
   * Scale E values (extrusion flow) by a custom ratio
   * Apply changes only to specific Z-height or layer ranges
@@ -12,13 +12,13 @@ A post-processing script for scaling extrusion flow in G-code (E values) based o
   * `--force` mode to override extrusion safety checks
   * Debug mode with CLI (`--debug`) and file output (`--debug-file`)
 
-## USAGE
+## Usage
 
 ```bash
 flow_scale.py -r <ratio> [options] [input.gcode]
 ```
 
-## OPTIONS
+## Options
 
   * `-i`, `--in` – Input G-code file
   * `-o`, `--out` – Output G-code file (default: stdout)
@@ -33,7 +33,7 @@ flow_scale.py -r <ratio> [options] [input.gcode]
   * `-D`, `--debug-file [PATH]` – Write debug info to file (default: `/tmp/flow_scale_debug.txt`)
   * `input.gcode` – Optional positional input path (fallback if `--in`/env not set)
 
-## SLICER INTEGRATION
+## Slicer Integration
 
 This script supports environment variables from common slicers:
 
@@ -50,7 +50,7 @@ This script supports environment variables from common slicers:
       * `BAMBU_LAYER_HEIGHT`
       * `BAMBU_GCODE_PATH`
 
-## DEBUG INFO
+## Debug Info
 
 Enable with:
 
@@ -72,10 +72,10 @@ Debug includes:
   * G92 E0 resets counted
   * Total lines and percent modified
 
-## REQUIREMENTS
+## Requirements
 
   * Python 3.6+
 
-## LICENSE
+## License
 
 MIT License
